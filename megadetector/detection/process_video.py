@@ -33,6 +33,7 @@ from megadetector.detection.video_utils import video_progress_bar_description
 from megadetector.detection.run_detector import load_detector
 from megadetector.detection.run_detector import is_gpu_available
 from megadetector.detection.run_detector import try_download_known_detector
+from megadetector.detection.run_detector import check_augmentation_support
 from megadetector.postprocessing.validate_batch_results import \
         ValidateBatchResultsOptions, validate_batch_results
 
@@ -831,6 +832,10 @@ def process_videos(options):
     if not os.path.isfile(model_file):
         raise ValueError('{} is not a known model name or an existing model file'.format(
             options.model_file))
+
+    # Error if augmentation is enabled for a no-augmentation-support model
+    if options.augment:
+        check_augmentation_support(model_file)
 
     detector_options = options.detector_options
     if detector_options is None:

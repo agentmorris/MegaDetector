@@ -228,7 +228,8 @@ known_models = {
     {
         'url':model_url_base + 'md_v1000.0.0-cedar.pt',
         'normalized_typical_inference_speed':2.0,
-        'md5':'3d6472c9b95ba687b59ebe255f7c576b'
+        'md5':'3d6472c9b95ba687b59ebe255f7c576b',
+        'supports_augmentation':False
     },
     'v1000.0.0-sorrel':
     {
@@ -339,6 +340,42 @@ def get_detector_version_from_filename(detector_filename,
             return 'multiple'
     else:
         return model_string_to_model_version[matches[0]]
+
+
+def model_supports_augmentation(model_file):
+    """
+    Determines whether a model file can be run with image augmentation (--augment).
+
+    Args:
+        model_file (str): model filename, e.g. c:/x/z/md_v1000.0.0-cedar.pt
+
+    Returns:
+        bool: False if [model_file] is a known model that doesn't support augmentation,
+        otherwise True
+    """
+
+    detector_version = get_detector_version_from_model_file(model_file)
+    if detector_version not in known_models:
+        return True
+    return known_models[detector_version].get('supports_augmentation',True)
+
+# ...def model_supports_augmentation(...)
+
+
+def check_augmentation_support(model_file):
+    """
+    Raises a ValueError if [model_file] doesn't support image augmentation.
+
+    Args:
+        model_file (str): model filename
+    """
+
+    if not model_supports_augmentation(model_file):
+        raise ValueError(
+            'Image augmentation is not supported for {} ({})'.format(
+            model_file,get_detector_version_from_model_file(model_file)))
+
+# ...def check_augmentation_support(...)
 
 
 def get_detector_version_from_model_file(detector_filename,verbose=False):
@@ -1163,6 +1200,9 @@ def load_and_run_detector(model_file,
     model_file = try_download_known_detector(model_file,
                                              force_download=force_model_download,
                                              verbose=verbose)
+
+    if augment:
+        check_augmentation_support(model_file)
 
     detector = load_detector(model_file,
                              detector_options=detector_options,

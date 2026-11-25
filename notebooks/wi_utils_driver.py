@@ -176,8 +176,11 @@ for state_code in us_state_codes:
 
 #%% Generate an allow-list
 
-taxon = 'sciurus carolinensis'
+taxon = 'gulo gulo'
 # taxon = 'eastern fox squirrel'
+
+allow_countries = ['USA']
+allow_states = ['ID','MT']
 species_string = taxonomy_handler.species_string_to_canonical_species_string(taxon)
 taxonomy_info = taxonomy_handler.taxonomy_string_to_taxonomy_info[species_string]
 
@@ -187,9 +190,9 @@ if False:
     assert len(taxonomy_string_short.split(';')) == 5
 
 rows = taxonomy_handler.generate_csv_rows_for_species(species_string=species_string,
-                                                      allow_countries=['USA'],
+                                                      allow_countries=allow_countries,
                                                       block_countries=None,
-                                                      allow_states=['CA','OR','ID','MT','WA'],
+                                                      allow_states=allow_states,
                                                       block_states=None)
 
 # import clipboard; clipboard.copy('\n'.join(rows))
@@ -221,9 +224,9 @@ for s in rows:
 
 #%% Determine whether a species is allowed in a location
 
-taxon = 'diprotodontia'
+taxon = 'gulo gulo'
 country = 'USA'
-state = None
+state = 'MT'
 allowed = taxonomy_handler.species_allowed_in_country(taxon,country,state=state,return_status=False)
 taxonomy_info = taxonomy_handler.species_string_to_taxonomy_info(taxon)
 common_name = taxonomy_info['common_name']
