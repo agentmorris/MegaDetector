@@ -1234,7 +1234,7 @@ def process_batch_results(options):
         detector_files = detections_df['file'].tolist()
 
         assert len(detector_files) > 0, (
-            'No detection files available, possible path issue?')
+            'No images available in results after filtering to GT image list, possible path issue?')
 
         print('Trimmed detection results to {} files'.format(len(detector_files)))
 
